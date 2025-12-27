@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureVault - Verify OTP</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            background-color: #0b1120; /* Very dark navy */
+            font-family: 'Inter', sans-serif;
+            color: #e2e8f0;
+        }
+
+        .auth-card {
+            background-color: #1e293b; /* Slate-800 */
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+        }
+
+        /* OTP Input Styling */
+        .otp-input {
+            background-color: #0f172a; /* Slate-900 */
+            border: 1px solid #334155;
+            color: #fff;
+            font-size: 1.25rem;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.2s ease;
+            width: 3rem;  /* Fixed square width */
+            height: 3.5rem;
+            border-radius: 0.5rem;
+        }
+
+        .otp-input:focus {
+            outline: none;
+            border-color: #10b981; /* Emerald-500 */
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Verify Button (Emerald Gradient) */
+        .action-btn {
+            background: linear-gradient(90deg, #059669 0%, #10b981 100%);
+            transition: opacity 0.2s;
+        }
+        .action-btn:hover {
+            opacity: 0.9;
+        }
+
+        .text-muted {
+            color: #94a3b8;
+        }
+
+        /* Icon Container */
+        .icon-box {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: #34d399;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-center items-center p-4">
+
+    <div class="w-full max-w-md mb-8 flex items-center justify-center">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400 border border-cyan-500/30">
+                <i class="fa-solid fa-shield-halved text-xl"></i>
+            </div>
+            <div>
+                <p class="text-xs text-cyan-500 font-bold tracking-wider uppercase">Zero Knowledge</p>
+                <h1 class="text-2xl font-bold text-white leading-none">SecureVault</h1>
+            </div>
+        </div>
+    </div>
+
+    <div class="auth-card w-full max-w-md rounded-2xl p-8 text-center">
+        
+        <div class="w-16 h-16 rounded-full icon-box flex items-center justify-center mx-auto mb-6">
+            <i class="fa-solid fa-envelope-open-text text-2xl"></i>
+        </div>
+
+        <h2 class="text-2xl font-semibold mb-2">Verify your email</h2>
+        <p class="text-sm text-muted mb-8">
+            We've sent a 6-digit code to <br>
+            <span class="text-white font-medium" id="userEmail">user@example.com</span>
+        </p>
+
+        <form id="otpForm" onsubmit="handleVerify(event)">
+            
+            <div class="flex justify-center gap-2 sm:gap-3 mb-8" id="otpContainer">
+                <input type="text" maxlength="1" class="otp-input" inputmode="numeric" pattern="[0-9]*">
+                <input type="text" maxlength="1" class="otp-input" inputmode="numeric" pattern="[0-9]*">
+                <input type="text" maxlength="1" class="otp-input" inputmode="numeric" pattern="[0-9]*">
+                <input type="text" maxlength="1" class="otp-input" inputmode="numeric" pattern="[0-9]*">
+                <input type="text" maxlength="1" class="otp-input" inputmode="numeric" pattern="[0-9]*">
+                <input type="text" maxlength="1" class="otp-input" inputmode="numeric" pattern="[0-9]*">
+            </div>
+
+            <button type="submit" class="action-btn w-full py-3 rounded-lg text-white font-semibold text-sm shadow-lg shadow-emerald-500/20 mb-6">
+                Verify & Proceed
+            </button>
+
+            <div class="text-sm text-muted">
+                Didn't receive the code? 
+                <button type="button" class="text-emerald-400 hover:text-emerald-300 font-medium ml-1 transition-colors">
+                    Click to resend
+                </button>
+            </div>
+
+            <div class="mt-6 border-t border-slate-700 pt-4">
+                <a href="register.html" class="text-xs text-slate-500 hover:text-slate-300 flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Register
+                </a>
+            </div>
+
+        </form>
+    </div>
+
+    <script>
+        // 1. Setup Input Logic
+        const inputs = document.querySelectorAll('.otp-input');
+        const form = document.getElementById('otpForm');
+
+        inputs.forEach((input, index) => {
+            // Handle Typing
+            input.addEventListener('input', (e) => {
+                const value = e.target.value;
+                
+                // If user types a number, move to next
+                if (value.length === 1 && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
+            });
+
+            // Handle Backspace
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                    inputs[index - 1].focus();
+                }
+            });
+
+            // Handle Paste (e.g., user pastes "123456")
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pasteData = e.clipboardData.getData('text').slice(0, 6).split('');
+                
+                pasteData.forEach((char, i) => {
+                    if (inputs[i]) inputs[i].value = char;
+                });
+
+                // Focus the last filled input
+                const lastIndex = Math.min(pasteData.length, inputs.length) - 1;
+                if (lastIndex >= 0) inputs[lastIndex].focus();
+            });
+        });
+
+        // 2. Handle Submit
+        function handleVerify(e) {
+            e.preventDefault();
+            
+            // Collect the code
+            let otpCode = '';
+            inputs.forEach(input => otpCode += input.value);
+
+            if (otpCode.length === 6) {
+                // Simulate success & redirect
+                const btn = document.querySelector('.action-btn');
+                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Verifying...';
+                
+                setTimeout(() => {
+                    alert('OTP Verified! Redirecting to dashboard...');
+                    // In a real app, you would redirect here:
+                     window.location.href = 'dashboard.html'; 
+                }, 1500);
+            } else {
+                alert('Please enter a valid 6-digit code.');
+                // Shake animation (optional visual flair)
+                document.getElementById('otpContainer').classList.add('animate-pulse');
+                setTimeout(() => document.getElementById('otpContainer').classList.remove('animate-pulse'), 500);
+            }
+        }
+
+        // Optional: Auto-focus first input on load
+        window.onload = () => inputs[0].focus();
+    </script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureVault - Complete Setup</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            background-color: #0b1120; /* Very dark navy */
+            font-family: 'Inter', sans-serif;
+            color: #e2e8f0;
+        }
+
+        .setup-card {
+            background-color: #1e293b; /* Slate-800 */
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+        }
+
+        .custom-input {
+            background-color: #0f172a; /* Slate-900 */
+            border: 1px solid #334155;
+            color: #cbd5e1;
+            transition: all 0.2s ease;
+        }
+
+        .custom-input:focus {
+            outline: none;
+            border-color: #06b6d4; /* Cyan-500 */
+            box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
+        }
+
+        /* Action Button */
+        .action-btn {
+            background: linear-gradient(90deg, #0891b2 0%, #0ea5e9 100%);
+            transition: opacity 0.2s;
+        }
+        .action-btn:hover {
+            opacity: 0.9;
+        }
+
+        .text-muted {
+            color: #94a3b8;
+        }
+
+        /* User Badge Style */
+        .user-badge {
+            background-color: #0f172a;
+            border: 1px solid #334155;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-center items-center p-4">
+
+    <div class="w-full max-w-md mb-6 flex items-center justify-center">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400 border border-cyan-500/30">
+                <i class="fa-solid fa-shield-halved text-xl"></i>
+            </div>
+            <div>
+                <p class="text-xs text-cyan-500 font-bold tracking-wider uppercase">Zero Knowledge</p>
+                <h1 class="text-2xl font-bold text-white leading-none">SecureVault</h1>
+            </div>
+        </div>
+    </div>
+
+    <div class="setup-card w-full max-w-md rounded-2xl p-8">
+        
+        <h2 class="text-2xl font-semibold mb-2">Finalize your account</h2>
+        <p class="text-sm text-muted mb-6">Create a username and password to finish setup.</p>
+
+        <div class="user-badge rounded-lg p-3 flex items-center gap-3 mb-6">
+            <div class="relative">
+                <img src="https://ui-avatars.com/api/?name=User&background=0d9488&color=fff" class="w-10 h-10 rounded-full">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="absolute -bottom-1 -right-1 w-4 h-4 bg-white rounded-full p-0.5 border border-slate-800">
+            </div>
+            <div class="flex-1 overflow-hidden">
+                <p class="text-xs text-muted uppercase font-bold tracking-wide">Connected as</p>
+                <p class="text-sm font-medium text-white truncate">google_user@gmail.com</p>
+            </div>
+            <i class="fa-solid fa-check-circle text-emerald-500"></i>
+        </div>
+
+        <form id="setupForm" onsubmit="event.preventDefault();">
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-muted mb-1.5">Username</label>
+                <input type="text" placeholder="Choose a unique username" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-muted mb-1.5">Create Password</label>
+                <div class="relative">
+                    <input type="password" id="createPass" placeholder="Enter password" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm pr-10">
+                    <button type="button" onclick="togglePass('createPass', 'eye1')" class="absolute right-3 top-2.5 text-muted hover:text-white">
+                        <i class="fa-regular fa-eye" id="eye1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-muted mb-1.5">Confirm Password</label>
+                <div class="relative">
+                    <input type="password" id="confirmPass" placeholder="Confirm password" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm pr-10">
+                    <button type="button" onclick="togglePass('confirmPass', 'eye2')" class="absolute right-3 top-2.5 text-muted hover:text-white">
+                        <i class="fa-regular fa-eye" id="eye2"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button class="action-btn w-full py-2.5 rounded-lg text-white font-semibold text-sm shadow-lg shadow-cyan-500/20 mb-4">
+                Complete Registration
+            </button>
+
+            <div class="text-center">
+                <a href="login.html" class="text-xs text-slate-500 hover:text-slate-300">
+                    Cancel
+                </a>
+            </div>
+
+        </form>
+    </div>
+
+    <script>
+        function togglePass(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+    </script>
+</body>
+</html>
