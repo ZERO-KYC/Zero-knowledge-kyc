@@ -18,29 +18,24 @@
         .action-btn { background: linear-gradient(90deg, #0891b2 0%, #0ea5e9 100%); transition: all 0.3s; }
         .btn-disabled { background: #475569; cursor: not-allowed; opacity: 0.5; }
         .btn-active { opacity: 1; box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.3); }
-        
-        @media (max-width: 768px) { 
-            .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 40; } 
-            .overlay.active { display: block; } 
-        }
+        @media (max-width: 768px) { .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 40; } .overlay.active { display: block; } }
     </style>
-
+</head>
+<body class="min-h-screen flex">
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
             const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             if (savedTheme === 'light') {
-                document.documentElement.classList.add('light-mode');
-                document.body.classList.add('light-mode'); 
+                document.body.classList.add('light-mode');
             } else if (savedTheme === 'dark') {
-                document.documentElement.classList.remove('light-mode');
+                document.body.classList.remove('light-mode');
             } else {
-                if (!systemDark) document.documentElement.classList.add('light-mode');
+                if (!systemDark) document.body.classList.add('light-mode');
             }
         })();
     </script>
-</head>
-<body class="min-h-screen flex">
+
     <div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
 
     {% include 'components/sidebar.html' %}
@@ -52,28 +47,22 @@
         </header>
 
         <div class="p-6 max-w-5xl mx-auto w-full">
-            
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div class="glass-card p-5 rounded-xl flex items-center gap-4">
                     <div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 text-xl"><i class="fa-solid fa-file-shield"></i></div>
-                    <div>
-                        <p class="text-2xl font-bold">{{ total_files }}</p>
-                        <p class="text-xs text-muted">Encrypted Files</p>
-                    </div>
+                    <div><p class="text-2xl font-bold">{{ total_files }}</p><p class="text-xs text-muted">Encrypted Files</p></div>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div class="glass-card rounded-2xl p-6">
                     <h3 class="text-lg font-semibold mb-4 flex items-center gap-2"><i class="fa-solid fa-cloud-arrow-up text-cyan-500"></i> Secure Upload</h3>
-                    
                     <form id="uploadForm" onsubmit="handleEncryptionAndUpload(event)">
                         <label class="block border-2 border-dashed border-[var(--border-color)] rounded-xl p-8 text-center hover:bg-slate-500/10 transition-colors cursor-pointer mb-4">
                             <i class="fa-solid fa-file-circle-plus text-3xl text-slate-500 mb-2"></i>
                             <p class="text-sm font-medium" id="fileNameDisplay" style="color: var(--text-main)">Click to select file</p>
                             <input type="file" id="fileInput" class="hidden" onchange="validateForm()">
                         </label>
-
                         <div class="mb-4">
                             <label class="block text-xs font-medium text-muted mb-1.5 uppercase">Secret Key</label>
                             <div class="relative">
@@ -81,10 +70,7 @@
                                 <i class="fa-solid fa-key absolute left-3.5 top-3 text-slate-500 text-xs"></i>
                             </div>
                         </div>
-
-                        <button id="uploadBtn" disabled class="action-btn btn-disabled w-full py-2.5 rounded-lg text-white font-semibold text-sm">
-                            Encrypt & Upload
-                        </button>
+                        <button id="uploadBtn" disabled class="action-btn btn-disabled w-full py-2.5 rounded-lg text-white font-semibold text-sm">Encrypt & Upload</button>
                     </form>
                 </div>
 
@@ -94,13 +80,8 @@
                         {% if files %}
                             {% for file in files %}
                             <div class="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-color)]" style="background-color: var(--input-bg)">
-                                <div class="w-10 h-10 rounded bg-blue-500/20 text-blue-500 flex items-center justify-center">
-                                    <i class="fa-regular fa-file"></i>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-medium truncate">{{ file.FileName }}</p>
-                                    <p class="text-xs text-muted">{{ file.UploadDate.strftime('%Y-%m-%d') }} • {{ (file.FileSizeBytes / 1024)|round(1) }} KB</p>
-                                </div>
+                                <div class="w-10 h-10 rounded bg-blue-500/20 text-blue-500 flex items-center justify-center"><i class="fa-regular fa-file"></i></div>
+                                <div class="flex-1 min-w-0"><p class="text-sm font-medium truncate">{{ file.FileName }}</p><p class="text-xs text-muted">{{ file.UploadDate.strftime('%Y-%m-%d') }} • {{ (file.FileSizeBytes / 1024)|round(1) }} KB</p></div>
                                 <span class="text-xs bg-emerald-500/10 text-emerald-500 px-2 py-1 rounded">AES-256</span>
                             </div>
                             {% endfor %}
@@ -114,75 +95,27 @@
     </main>
 
     <script>
-        function toggleSidebar() { 
-            document.getElementById('sidebar').classList.toggle('open'); 
-            document.getElementById('overlay').classList.toggle('active'); 
-        }
-
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); }
         function validateForm() {
             const f = document.getElementById('fileInput').files.length;
             const k = document.getElementById('secretKey').value.length;
             const btn = document.getElementById('uploadBtn');
             const txt = document.getElementById('fileNameDisplay');
-            
-            if (f > 0) {
-                txt.textContent = document.getElementById('fileInput').files[0].name;
-                txt.classList.add('text-cyan-500');
-            }
-            if(f > 0 && k > 0) {
-                btn.disabled = false; btn.classList.remove('btn-disabled'); btn.classList.add('btn-active');
-            } else {
-                btn.disabled = true; btn.classList.add('btn-disabled'); btn.classList.remove('btn-active');
-            }
+            if (f > 0) { txt.textContent = document.getElementById('fileInput').files[0].name; txt.classList.add('text-cyan-500'); }
+            if(f > 0 && k > 0) { btn.disabled = false; btn.classList.remove('btn-disabled'); btn.classList.add('btn-active'); } 
+            else { btn.disabled = true; btn.classList.add('btn-disabled'); btn.classList.remove('btn-active'); }
         }
 
-        // --- CRYPTO FUNCTIONS ---
-        async function getBaseKey(pin) {
-            const encoder = new TextEncoder();
-            return window.crypto.subtle.importKey("raw", encoder.encode(pin), { name: "PBKDF2" }, false, ["deriveKey"]);
-        }
-
-        async function deriveEncryptionKey(pin, salt) {
-            const baseKey = await getBaseKey(pin);
-            return window.crypto.subtle.deriveKey(
-                { name: "PBKDF2", salt: salt, iterations: 600000, hash: "SHA-256" },
-                baseKey,
-                { name: "AES-GCM", length: 256 }, 
-                false, 
-                ["encrypt", "decrypt"]
-            );
-        }
-
-        async function fileToBuffer(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.readAsArrayBuffer(file);
-            });
-        }
-
+        async function getBaseKey(pin) { const encoder = new TextEncoder(); return window.crypto.subtle.importKey("raw", encoder.encode(pin), { name: "PBKDF2" }, false, ["deriveKey"]); }
+        async function deriveEncryptionKey(pin, salt) { const baseKey = await getBaseKey(pin); return window.crypto.subtle.deriveKey({ name: "PBKDF2", salt: salt, iterations: 600000, hash: "SHA-256" }, baseKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]); }
+        async function fileToBuffer(file) { return new Promise((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsArrayBuffer(file); }); }
         async function encryptFile(file, derivedKey) {
             const iv = window.crypto.getRandomValues(new Uint8Array(12)); 
             const fileBuffer = await fileToBuffer(file);
-            const encryptedContent = await window.crypto.subtle.encrypt(
-                { name: "AES-GCM", iv: iv },
-                derivedKey,
-                fileBuffer
-            );
-            return {
-                encryptedBlob: new Blob([encryptedContent]),
-                fileIv: iv
-            };
+            const encryptedContent = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, derivedKey, fileBuffer);
+            return { encryptedBlob: new Blob([encryptedContent]), fileIv: iv };
         }
-
-        async function sha1(string) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(string);
-            const hashBuffer = await window.crypto.subtle.digest('SHA-1', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).toUpperCase().join('');
-        }
-
+        async function sha1(string) { const encoder = new TextEncoder(); const data = encoder.encode(string); const hashBuffer = await window.crypto.subtle.digest('SHA-1', data); const hashArray = Array.from(new Uint8Array(hashBuffer)); return hashArray.map(b => b.toString(16).padStart(2, '0')).toUpperCase().join(''); }
         async function checkPinLeak(pin) {
             try {
                 const fullHash = await sha1(pin);
@@ -229,66 +162,26 @@
 
                 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
                 btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up fa-bounce"></i> Uploading...';
-                
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': csrfToken },
-                    body: formData
-                });
-
+                const response = await fetch('/api/upload', { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: formData });
                 const result = await response.json();
                 
                 if (result.success) {
                     alert("✅ Success: File Encrypted & Vaulted!");
-                    
-                    const countEl = document.querySelector('.text-2xl.font-bold');
-                    if(countEl) countEl.innerText = parseInt(countEl.innerText) + 1;
-
+                    const countEl = document.querySelector('.text-2xl.font-bold'); if(countEl) countEl.innerText = parseInt(countEl.innerText) + 1;
                     const listContainer = document.querySelector('.space-y-3');
-                    const noFilesMsg = listContainer.querySelector('.text-muted');
-                    if(noFilesMsg && noFilesMsg.innerText.includes("No files")) {
-                        noFilesMsg.remove();
-                    }
-
+                    const noFilesMsg = listContainer.querySelector('.text-muted'); if(noFilesMsg && noFilesMsg.innerText.includes("No files")) { noFilesMsg.remove(); }
                     const newRow = document.createElement('div');
                     newRow.className = "flex items-center gap-3 p-3 rounded-lg border border-[var(--border-color)] animate-pulse";
                     newRow.style.backgroundColor = "var(--input-bg)";
-                    
                     const sizeKB = (result.new_file.size / 1024).toFixed(1);
-
-                    newRow.innerHTML = `
-                        <div class="w-10 h-10 rounded bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                            <i class="fa-regular fa-file"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium truncate">${result.new_file.name}</p>
-                            <p class="text-xs text-muted">${result.new_file.date} • ${sizeKB} KB</p>
-                        </div>
-                        <span class="text-xs bg-emerald-500/10 text-emerald-500 px-2 py-1 rounded">AES-256</span>
-                    `;
-
+                    newRow.innerHTML = `<div class="w-10 h-10 rounded bg-blue-500/10 text-blue-500 flex items-center justify-center"><i class="fa-regular fa-file"></i></div><div class="flex-1 min-w-0"><p class="text-sm font-medium truncate">${result.new_file.name}</p><p class="text-xs text-muted">${result.new_file.date} • ${sizeKB} KB</p></div><span class="text-xs bg-emerald-500/10 text-emerald-500 px-2 py-1 rounded">AES-256</span>`;
                     listContainer.insertBefore(newRow, listContainer.firstChild);
-
                     document.getElementById('uploadForm').reset();
                     document.getElementById('fileNameDisplay').innerText = "Click to select file";
                     document.getElementById('fileNameDisplay').classList.remove('text-cyan-500');
-                    
-                    btn.innerHTML = originalText;
-                    btn.disabled = true;
-                    btn.classList.add('btn-disabled');
-
-                } else {
-                    alert("❌ Error: " + result.message);
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }
-
-            } catch (err) {
-                console.error(err);
-                alert("Operation Failed: " + err.message);
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
+                    btn.innerHTML = originalText; btn.disabled = true; btn.classList.add('btn-disabled');
+                } else { alert("❌ Error: " + result.message); btn.innerHTML = originalText; btn.disabled = false; }
+            } catch (err) { console.error(err); alert("Operation Failed: " + err.message); btn.innerHTML = originalText; btn.disabled = false; }
         }
     </script>
 </body>

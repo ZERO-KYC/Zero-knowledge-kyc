@@ -33,17 +33,17 @@
                 <h1 class="text-2xl font-bold text-white leading-none">SecureVault</h1>
             </div>
         </div>
-        <a href="#" class="text-sm text-cyan-400 hover:text-cyan-300">Create account</a>
+        <a href="{{ url_for('register_page') }}" class="text-sm text-cyan-400 hover:text-cyan-300">Create account</a>
     </div>
 
     <div class="login-card w-full max-w-md rounded-2xl p-8">
         
         <h2 class="text-2xl font-semibold mb-6">Welcome back</h2>
 
-        <button class="google-btn w-full py-2.5 rounded-lg flex items-center justify-center gap-3 mb-6 group">
+        <a href="{{ url_for('google_login') }}" class="google-btn w-full py-2.5 rounded-lg flex items-center justify-center gap-3 mb-6 group decoration-none">
             <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
             <span class="text-sm font-medium text-white group-hover:text-white">Continue with Google</span>
-        </button>
+        </a>
 
         <div class="flex items-center gap-4 mb-6">
             <div class="h-px bg-slate-700 flex-1"></div>
@@ -74,7 +74,7 @@
             </button>
 
             <div class="text-center text-sm text-muted">
-                Don't have an account? <a href="#" class="text-cyan-400 hover:underline">Create one</a>
+                Don't have an account? <a href="{{ url_for('register_page') }}" class="text-cyan-400 hover:underline">Create one</a>
             </div>
 
         </form>
@@ -95,9 +95,8 @@
             }
         }
 
-        // --- NEW LOGIN LOGIC ---
         async function handleLogin(event) {
-            event.preventDefault(); // Stop page reload
+            event.preventDefault(); 
 
             const btn = document.getElementById('loginBtn');
             const originalText = btn.innerText;
@@ -113,7 +112,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken // IMPORTANT: Pass CSRF Token
+                        'X-CSRFToken': csrfToken 
                     },
                     body: JSON.stringify({ username: username, password: password })
                 });
@@ -121,7 +120,7 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    window.location.href = result.redirect; // Go to Dashboard
+                    window.location.href = result.redirect; 
                 } else {
                     alert("Error: " + result.message);
                     btn.innerText = originalText;

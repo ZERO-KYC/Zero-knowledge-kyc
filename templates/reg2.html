@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>SecureVault - Complete Setup</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -76,27 +77,28 @@
 
         <div class="user-badge rounded-lg p-3 flex items-center gap-3 mb-6">
             <div class="relative">
-                <img src="https://ui-avatars.com/api/?name=User&background=0d9488&color=fff" class="w-10 h-10 rounded-full">
+                <img src="https://ui-avatars.com/api/?name={{ email }}&background=0d9488&color=fff" class="w-10 h-10 rounded-full">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="absolute -bottom-1 -right-1 w-4 h-4 bg-white rounded-full p-0.5 border border-slate-800">
             </div>
             <div class="flex-1 overflow-hidden">
                 <p class="text-xs text-muted uppercase font-bold tracking-wide">Connected as</p>
-                <p class="text-sm font-medium text-white truncate">google_user@gmail.com</p>
+                <p class="text-sm font-medium text-white truncate">{{ email }}</p>
             </div>
             <i class="fa-solid fa-check-circle text-emerald-500"></i>
         </div>
 
-        <form id="setupForm" onsubmit="event.preventDefault();">
+        <form id="setupForm" method="POST" action="{{ url_for('finalize_account') }}" onsubmit="return validateFinalize(event)">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             
             <div class="mb-4">
                 <label class="block text-sm font-medium text-muted mb-1.5">Username</label>
-                <input type="text" placeholder="Choose a unique username" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm">
+                <input type="text" name="username" id="username" placeholder="Choose a unique username" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm" required>
             </div>
 
             <div class="mb-4">
                 <label class="block text-sm font-medium text-muted mb-1.5">Create Password</label>
                 <div class="relative">
-                    <input type="password" id="createPass" placeholder="Enter password" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm pr-10">
+                    <input type="password" name="password" id="createPass" placeholder="Enter password" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm pr-10" required>
                     <button type="button" onclick="togglePass('createPass', 'eye1')" class="absolute right-3 top-2.5 text-muted hover:text-white">
                         <i class="fa-regular fa-eye" id="eye1"></i>
                     </button>
@@ -106,19 +108,19 @@
             <div class="mb-6">
                 <label class="block text-sm font-medium text-muted mb-1.5">Confirm Password</label>
                 <div class="relative">
-                    <input type="password" id="confirmPass" placeholder="Confirm password" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm pr-10">
+                    <input type="password" id="confirmPass" placeholder="Confirm password" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm pr-10" required>
                     <button type="button" onclick="togglePass('confirmPass', 'eye2')" class="absolute right-3 top-2.5 text-muted hover:text-white">
                         <i class="fa-regular fa-eye" id="eye2"></i>
                     </button>
                 </div>
             </div>
 
-            <button class="action-btn w-full py-2.5 rounded-lg text-white font-semibold text-sm shadow-lg shadow-cyan-500/20 mb-4">
+            <button type="submit" id="submitBtn" class="action-btn w-full py-2.5 rounded-lg text-white font-semibold text-sm shadow-lg shadow-cyan-500/20 mb-4">
                 Complete Registration
             </button>
 
             <div class="text-center">
-                <a href="login.html" class="text-xs text-slate-500 hover:text-slate-300">
+                <a href="{{ url_for('login') }}" class="text-xs text-slate-500 hover:text-slate-300">
                     Cancel
                 </a>
             </div>
@@ -140,6 +142,22 @@
                 icon.classList.remove('fa-eye-slash');
                 icon.classList.add('fa-eye');
             }
+        }
+
+        function validateFinalize(event) {
+            const pass = document.getElementById('createPass').value;
+            const confirm = document.getElementById('confirmPass').value;
+            const btn = document.getElementById('submitBtn');
+
+            if (pass !== confirm) {
+                alert("Passwords do not match!");
+                event.preventDefault();
+                return false;
+            }
+
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Setting up...';
+            btn.disabled = true;
+            return true; // Submit the form
         }
     </script>
 </body>

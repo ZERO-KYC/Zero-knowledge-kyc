@@ -44,18 +44,16 @@
             background-color: #334155;
         }
 
-        /* Updated Action Button to match "Send OTP" style (Teal/Greenish hue) */
+        /* Emerald/Teal gradient */
         .action-btn {
-            background: linear-gradient(90deg, #059669 0%, #10b981 100%); /* Emerald/Teal gradient */
+            background: linear-gradient(90deg, #059669 0%, #10b981 100%); 
             transition: opacity 0.2s;
         }
         .action-btn:hover {
             opacity: 0.9;
         }
 
-        .text-muted {
-            color: #94a3b8;
-        }
+        .text-muted { color: #94a3b8; }
         
         /* Custom Checkbox */
         .custom-checkbox {
@@ -101,17 +99,17 @@
                 <h1 class="text-2xl font-bold text-white leading-none">SecureVault</h1>
             </div>
         </div>
-        <a href="login.html" class="text-sm text-cyan-400 hover:text-cyan-300">Sign in</a>
+        <a href="{{ url_for('login') }}" class="text-sm text-cyan-400 hover:text-cyan-300">Sign in</a>
     </div>
 
     <div class="register-card w-full max-w-md rounded-2xl p-8">
         
         <h2 class="text-2xl font-semibold mb-6">Sign up to continue</h2>
 
-        <button class="google-btn w-full py-2.5 rounded-lg flex items-center justify-center gap-3 mb-6 group">
+        <a href="{{ url_for('google_login') }}" class="google-btn w-full py-2.5 rounded-lg flex items-center justify-center gap-3 mb-6 group decoration-none">
             <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
             <span class="text-sm font-medium text-white group-hover:text-white">Continue with Google</span>
-        </button>
+        </a>
 
         <div class="flex items-center gap-4 mb-6">
             <div class="h-px bg-slate-700 flex-1"></div>
@@ -119,23 +117,23 @@
             <div class="h-px bg-slate-700 flex-1"></div>
         </div>
 
-        <form id="registerForm" onsubmit="event.preventDefault();">
+        <form id="registerForm" onsubmit="handleRegister(event)">
             
             <div class="mb-4">
                 <label class="block text-sm font-medium text-muted mb-1.5">Username</label>
-                <input type="text" placeholder="Create your username" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm">
+                <input type="text" id="regUsername" placeholder="Create your username" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm" required>
             </div>
 
             <div class="mb-4">
                 <label class="block text-sm font-medium text-muted mb-1.5">Email</label>
-                <input type="email" placeholder="Enter your email address" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm">
+                <input type="email" id="regEmail" placeholder="Enter your email address" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm" required>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="block text-sm font-medium text-muted mb-1.5">Password</label>
                     <div class="relative">
-                        <input type="password" id="regPassword" placeholder="Enter password" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm pr-10">
+                        <input type="password" id="regPassword" placeholder="Enter password" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm pr-10" required>
                         <button type="button" onclick="toggleRegPassword('regPassword', 'eyeIcon1')" class="absolute right-3 top-2.5 text-muted hover:text-white">
                             <i class="fa-regular fa-eye" id="eyeIcon1"></i>
                         </button>
@@ -145,7 +143,7 @@
                 <div>
                     <label class="block text-sm font-medium text-muted mb-1.5">Confirm</label>
                     <div class="relative">
-                        <input type="password" id="confirmPassword" placeholder="Confirm password" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm pr-10">
+                        <input type="password" id="confirmPassword" placeholder="Confirm password" class="custom-input w-full px-4 py-2.5 rounded-lg text-sm pr-10" required>
                         <button type="button" onclick="toggleRegPassword('confirmPassword', 'eyeIcon2')" class="absolute right-3 top-2.5 text-muted hover:text-white">
                             <i class="fa-regular fa-eye" id="eyeIcon2"></i>
                         </button>
@@ -158,20 +156,16 @@
             </p>
 
             <div class="flex items-start gap-3 mb-6">
-                <input type="checkbox" id="terms" class="custom-checkbox mt-1">
+                <input type="checkbox" id="terms" class="custom-checkbox mt-1" required>
                 <label for="terms" class="text-sm text-muted leading-tight">
                     I agree to the <a href="#" class="text-cyan-400 hover:underline">Terms</a> and <a href="#" class="text-cyan-400 hover:underline">Privacy Policy</a>.
                 </label>
             </div>
 
-            <button class="action-btn w-full py-2.5 rounded-lg text-white font-semibold text-sm shadow-lg shadow-emerald-500/20 mb-6 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-envelope"></i>
-                Send OTP
+            <button id="regBtn" type="submit" class="action-btn w-full py-2.5 rounded-lg text-white font-semibold text-sm shadow-lg shadow-emerald-500/20 mb-6 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-user-plus"></i>
+                Create Account
             </button>
-
-            <p class="text-center text-xs text-slate-500">
-                We'll send a one-time verification code to your email.
-            </p>
 
         </form>
     </div>
@@ -189,6 +183,58 @@
                 input.type = 'password';
                 icon.classList.remove('fa-eye-slash');
                 icon.classList.add('fa-eye');
+            }
+        }
+
+        // --- REGISTER LOGIC ---
+        async function handleRegister(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('regUsername').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const confirm = document.getElementById('confirmPassword').value;
+            const terms = document.getElementById('terms').checked;
+            const btn = document.getElementById('regBtn');
+            const originalText = btn.innerHTML;
+
+            if (password !== confirm) {
+                alert("Passwords do not match!");
+                return;
+            }
+
+            if (!terms) {
+                alert("You must agree to the terms.");
+                return;
+            }
+
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Creating...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert("Account Created Successfully! Redirecting to login...");
+                    window.location.href = result.redirect;
+                } else {
+                    alert("Error: " + result.message);
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                console.error("Registration failed:", error);
+                alert("Something went wrong. Please try again.");
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
         }
     </script>
