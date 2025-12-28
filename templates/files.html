@@ -3,50 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>SecureVault - My Files</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        :root {
-            --bg-color: #0b1120;
-            --card-bg: #1e293b;
-            --sidebar-bg: #1e293b;
-            --border-color: #334155;
-            --text-main: #e2e8f0;
-            --text-muted: #94a3b8;
-            --input-bg: #0f172a;
-        }
-
-        body.light-mode {
-            --bg-color: #f1f5f9;
-            --card-bg: #ffffff;
-            --sidebar-bg: #ffffff;
-            --border-color: #e2e8f0;
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --input-bg: #f8fafc;
-        }
-
-        body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif; transition: 0.3s; }
-        .sidebar { background-color: var(--sidebar-bg); border-right: 1px solid var(--border-color); }
+        :root { --bg-color: #0b1120; --card-bg: #1e293b; --sidebar-bg: #1e293b; --border-color: #334155; --text-main: #e2e8f0; --text-muted: #94a3b8; --input-bg: #0f172a; }
+        body.light-mode { --bg-color: #f1f5f9; --card-bg: #ffffff; --sidebar-bg: #ffffff; --border-color: #e2e8f0; --text-main: #0f172a; --text-muted: #64748b; --input-bg: #f8fafc; }
+        body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif; }
         .glass-card { background-color: var(--card-bg); border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .file-card:hover { border-color: #06b6d4; transform: translateY(-2px); }
+        .file-card:hover { border-color: #06b6d4; transform: translateY(-2px); transition: 0.2s; }
         .modal-bg { background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); }
+        .custom-input { background-color: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); }
+        .custom-input:focus { outline: none; border-color: #06b6d4; }
         
         @media (max-width: 768px) {
-            .sidebar { position: fixed; top: 0; left: 0; height: 100%; z-index: 50; transform: translateX(-100%); transition: transform 0.3s; }
-            .sidebar.open { transform: translateX(0); }
             .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 40; }
             .overlay.active { display: block; }
         }
     </style>
+
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
             const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (savedTheme === 'light' || (!savedTheme && !systemDark)) {
-                document.body.classList.add('light-mode');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.add('light-mode');
+                document.body.classList.add('light-mode'); 
+            } else if (savedTheme === 'dark') {
+                document.documentElement.classList.remove('light-mode');
+            } else {
+                if (!systemDark) document.documentElement.classList.add('light-mode');
             }
         })();
     </script>
@@ -60,54 +48,145 @@
             <div class="text-center mb-6">
                 <div class="w-12 h-12 rounded-full bg-cyan-500/20 text-cyan-500 flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-lock"></i></div>
                 <h3 class="text-lg font-semibold">Unlock File</h3>
-                <p class="text-xs text-muted">Enter Secret Key for <br><span id="modalFileName" class="font-bold">file.pdf</span></p>
+                <p class="text-xs text-muted">Enter Secret Key for <br><span id="modalFileName" class="font-bold text-cyan-500"></span></p>
             </div>
-            <input type="password" placeholder="Enter Key" class="w-full bg-transparent border border-slate-500 rounded-lg px-4 py-3 mb-4 focus:border-cyan-500 focus:outline-none">
-            <button class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2.5 rounded-lg">Decrypt & View</button>
+            
+            <input type="hidden" id="modalFileId">
+            <input type="password" id="decryptKey" placeholder="Enter PIN/Key" class="custom-input w-full rounded-lg px-4 py-3 mb-4">
+            
+            <button id="decryptBtn" onclick="startDecryption()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2.5 rounded-lg transition-colors">
+                Decrypt & Download
+            </button>
+            <p id="statusMsg" class="text-xs text-center mt-3 text-red-400 min-h-[1.5em]"></p>
         </div>
     </div>
 
-    <aside id="sidebar" class="sidebar w-64 h-screen flex flex-col fixed md:relative shrink-0">
-        <div class="p-6 flex items-center gap-3 border-b border-[var(--border-color)]">
-            <div class="w-8 h-8 rounded bg-cyan-500/20 flex items-center justify-center text-cyan-500"><i class="fa-solid fa-shield-halved"></i></div>
-            <h1 class="text-xl font-bold">SecureVault</h1>
-        </div>
-        <nav class="flex-1 p-4 space-y-2">
-            <a href="dashboard.html" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:dark:bg-slate-800 rounded-lg transition-colors">
-                <i class="fa-solid fa-house"></i> <span class="font-medium">Home</span>
-            </a>
-            <a href="files.html" class="flex items-center gap-3 px-4 py-3 bg-cyan-500/10 text-cyan-500 rounded-lg border border-cyan-500/20">
-                <i class="fa-solid fa-folder-open"></i> <span class="font-medium">My Files</span>
-            </a>
-            <a href="settings.html" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:dark:bg-slate-800 rounded-lg transition-colors">
-                <i class="fa-solid fa-gear"></i> <span class="font-medium">Settings</span>
-            </a>
-        </nav>
-    </aside>
+    {% include 'components/sidebar.html' %}
 
     <main class="flex-1 flex flex-col h-screen overflow-y-auto">
         <header class="h-16 border-b border-[var(--border-color)] flex items-center px-6 sticky top-0 backdrop-blur-sm z-30" style="background-color: var(--bg-color)">
             <button onclick="toggleSidebar()" class="md:hidden text-2xl mr-4"><i class="fa-solid fa-bars"></i></button>
             <h2 class="text-lg font-semibold">My Files</h2>
         </header>
+        
         <div class="p-6 max-w-6xl mx-auto w-full">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                <div onclick="openDecryptModal('Tax_Return.pdf')" class="file-card glass-card p-4 rounded-xl cursor-pointer transition-all">
-                    <div class="flex justify-between mb-3">
-                        <div class="w-10 h-10 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center"><i class="fa-regular fa-file-pdf"></i></div>
-                        <i class="fa-solid fa-lock text-emerald-500 text-xs"></i>
+                
+                {% if files %}
+                    {% for file in files %}
+                    <div onclick="openDecryptModal('{{ file.FileName }}', '{{ file.FileID }}')" class="file-card glass-card p-4 rounded-xl cursor-pointer border border-transparent">
+                        <div class="flex justify-between mb-3">
+                            <div class="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                                <i class="fa-regular fa-file"></i>
+                            </div>
+                            <i class="fa-solid fa-lock text-emerald-500 text-xs"></i>
+                        </div>
+                        <h4 class="text-sm font-medium truncate mb-1">{{ file.FileName }}</h4>
+                        <p class="text-xs text-muted">{{ (file.FileSizeBytes / 1024)|round(1) }} KB • {{ file.UploadDate.strftime('%Y-%m-%d') }}</p>
                     </div>
-                    <h4 class="text-sm font-medium truncate mb-1">Tax_Return.pdf</h4>
-                    <p class="text-xs text-muted">2.4 MB • Today</p>
-                </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted col-span-full text-center py-10">No files found. Upload one from the Dashboard!</p>
+                {% endif %}
+
             </div>
         </div>
     </main>
 
     <script>
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); }
-        function openDecryptModal(name) { document.getElementById('modalFileName').innerText = name; document.getElementById('decryptModal').classList.remove('hidden'); }
+        function toggleSidebar() { 
+            document.getElementById('sidebar').classList.toggle('open'); 
+            document.getElementById('overlay').classList.toggle('active'); 
+        }
+        
+        function openDecryptModal(name, id) { 
+            document.getElementById('modalFileName').innerText = name; 
+            document.getElementById('modalFileId').value = id;
+            document.getElementById('decryptKey').value = ""; 
+            document.getElementById('statusMsg').innerText = ""; 
+            document.getElementById('decryptModal').classList.remove('hidden'); 
+        }
+
         function closeModal() { document.getElementById('decryptModal').classList.add('hidden'); }
+
+        // --- CRYPTO FUNCTIONS ---
+        async function getBaseKey(pin) {
+            const encoder = new TextEncoder();
+            return window.crypto.subtle.importKey("raw", encoder.encode(pin), { name: "PBKDF2" }, false, ["deriveKey"]);
+        }
+
+        async function deriveDecryptionKey(pin, saltHex) {
+            const saltBytes = new Uint8Array(saltHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+            const baseKey = await getBaseKey(pin);
+            return window.crypto.subtle.deriveKey(
+                { name: "PBKDF2", salt: saltBytes, iterations: 600000, hash: "SHA-256" },
+                baseKey,
+                { name: "AES-GCM", length: 256 },
+                false,
+                ["decrypt"]
+            );
+        }
+
+        async function decryptContent(encryptedB64, key, ivHex) {
+            const binaryString = window.atob(encryptedB64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) { bytes[i] = binaryString.charCodeAt(i); }
+            
+            const ivBytes = new Uint8Array(ivHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+
+            return window.crypto.subtle.decrypt(
+                { name: "AES-GCM", iv: ivBytes },
+                key,
+                bytes
+            );
+        }
+
+        async function startDecryption() {
+            const btn = document.getElementById('decryptBtn');
+            const status = document.getElementById('statusMsg');
+            const fileId = document.getElementById('modalFileId').value;
+            const pin = document.getElementById('decryptKey').value;
+
+            if(!pin) { status.innerText = "Please enter the PIN."; return; }
+
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Downloading...';
+            btn.disabled = true;
+            status.innerText = "";
+
+            try {
+                const response = await fetch(`/api/download/${fileId}`);
+                const data = await response.json();
+
+                if (!data.success) throw new Error(data.message);
+
+                btn.innerHTML = '<i class="fa-solid fa-unlock"></i> Decrypting...';
+
+                const key = await deriveDecryptionKey(pin, data.salt);
+                const decryptedBuffer = await decryptContent(data.encryptedData, key, data.iv);
+
+                const blob = new Blob([decryptedBuffer], { type: data.fileType });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = data.fileName; 
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                closeModal();
+                btn.innerHTML = 'Decrypt & Download';
+                btn.disabled = false;
+                alert("File Decrypted Successfully!");
+
+            } catch (err) {
+                console.error(err);
+                status.innerText = "Decryption Failed. Wrong Password?";
+                btn.innerHTML = 'Decrypt & Download';
+                btn.disabled = false;
+            }
+        }
     </script>
 </body>
 </html>

@@ -1,24 +1,20 @@
 from flask import Flask, redirect, url_for, session, request, render_template, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
-import os, urllib
-from urllib.parse import quote_plus
+import os, urllib, uuid
 from flask_wtf import CSRFProtect
-from flask_wtf.csrf import generate_csrf
 from supabase import create_client, Client
-
-# SQLAlchemy imports (IMPORTANT)
-from sqlalchemy import  Integer, String, BigInteger, DateTime, ForeignKey
+from werkzeug.security import check_password_hash, generate_password_hash
+from sqlalchemy import Integer, String, BigInteger, DateTime, ForeignKey
 from sqlalchemy.sql import func
+import base64
 
-# ---------------------------------------------------
-# Load environment variables
-# ---------------------------------------------------
 load_dotenv()
 
-# ---------------------------------------------------
-# Build ODBC connection string safely
-# ---------------------------------------------------
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 params = urllib.parse.quote_plus(
     f"Driver={{ODBC Driver 17 for SQL Server}};"
     f"Server={os.getenv('DB_SERVER')};"
@@ -29,85 +25,263 @@ params = urllib.parse.quote_plus(
     f"TrustServerCertificate=no;"
 )
 
-# ---------------------------------------------------
-# Supabase Configuration
-# ---------------------------------------------------
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-try:
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        raise ValueError("Supabase Keys missing in .env")
-
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    print("Supabase Connected!")
-except Exception as e:
-    print(f"Supabase Connection Failed: {e}")
-
-# ---------------------------------------------------
-# Flask App Setup
-# ---------------------------------------------------
 app = Flask(__name__)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = (
-    f"mssql+pyodbc:///?odbc_connect={params}"
-)
+app.config['SQLALCHEMY_DATABASE_URI'] = f"mssql+pyodbc:///?odbc_connect={params}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-app.secret_key = os.getenv("APP_SECRET_KEY")  # required for sessions
-
-# CSRF Protection
+app.secret_key = os.getenv("APP_SECRET_KEY")
 csrf = CSRFProtect(app)
-
-# SQLAlchemy Init
 db = SQLAlchemy(app)
 
-# ---------------------------------------------------
-# USERS MODEL (MATCHES YOUR SQL TABLE EXACTLY)
-# ---------------------------------------------------
 class Users(db.Model):
     __tablename__ = "Users"
-    __table_args__ = {'schema': 'dbo'}
-
     UserID = db.Column(Integer, primary_key=True, autoincrement=True)
-    Username = db.Column(String(50), nullable=False, unique=True)
-    Email = db.Column(String(100), nullable=False, unique=True)
+    Username = db.Column(String(50), unique=True, nullable=False)
+    Email = db.Column(String(100), unique=True, nullable=False)
     PasswordHash = db.Column(String(255), nullable=False)
     ProfileImage = db.Column(String(255), nullable=True)
     CreatedAt = db.Column(DateTime, server_default=func.getdate())
 
 class UserFiles(db.Model):
     __tablename__ = "UserFiles"
-    __table_args__ = {'schema': 'dbo'}
-
     FileID = db.Column(Integer, primary_key=True, autoincrement=True)
-
-    # Foreign key to Users table
-    UserID = db.Column(
-        Integer,
-        ForeignKey("dbo.Users.UserID", ondelete="CASCADE"),
-        nullable=False
-    )
-
-    # Display info (visible to user)
+    UserID = db.Column(Integer, ForeignKey("Users.UserID"), nullable=False)
     FileName = db.Column(String(255), nullable=False)
     FileSizeBytes = db.Column(BigInteger, nullable=False)
-    FileType = db.Column(String(50), nullable=True)
-
-    # Supabase storage reference
+    FileType = db.Column(String(50))
     StoragePath = db.Column(String(500), nullable=False)
-    StorageProvider = db.Column(String(50), default="supabase")
-
-    # Crypto metadata (zero-knowledge support)
+    StorageProvider = db.Column(String(50), server_default='supabase')
     EncryptionSalt = db.Column(String(255), nullable=False)
     EncryptionIV = db.Column(String(255), nullable=False)
-
     UploadDate = db.Column(DateTime, server_default=func.getdate())
 
-
 @app.route("/")
+def index():
+    if "user_id" in session:
+        return redirect(url_for("dashboard"))
+    return redirect(url_for("login"))
+
+@app.route("/login")
 def login():
     return render_template("login.html")
+
+@app.route("/register_page")
+def register_page():
+    return render_template("register.html")
+
+@app.route("/register", methods=["POST"])
+def register_user():
+    data = request.get_json()
+    username = data.get("username")
+    email = data.get("email")
+    password = data.get("password")
+
+    if not username or not email or not password:
+        return jsonify({"success": False, "message": "All fields are required"}), 400
+
+    if Users.query.filter((Users.Username == username) | (Users.Email == email)).first():
+        return jsonify({"success": False, "message": "Username or Email already exists"}), 409
+
+    hashed_pw = generate_password_hash(password)
+    
+    new_user = Users(
+        Username=username, 
+        Email=email, 
+        PasswordHash=hashed_pw
+    )
+
+    try:
+        db.session.add(new_user)
+        db.session.commit()
+        return jsonify({"success": True, "redirect": url_for("login")})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database Error"}), 500
+
+@app.route('/login_button', methods=['POST'])
+def login_post():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    user = Users.query.filter_by(Username=username).first()
+
+    if not user:
+        return jsonify({"success": False, "message": "User not found"}), 404
+
+    if not check_password_hash(user.PasswordHash, password):
+        return jsonify({"success": False, "message": "Incorrect password"}), 401
+
+    session.permanent = True
+    session['user_id'] = user.UserID
+    session['username'] = user.Username
+
+    return jsonify({"success": True, "redirect": url_for('dashboard')})
+
+@app.route("/dashboard")
+def dashboard():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    
+    user_id = session["user_id"]
+    
+    total_files = UserFiles.query.filter_by(UserID=user_id).count()
+    
+    recent_files = UserFiles.query.filter_by(UserID=user_id)\
+        .order_by(UserFiles.UploadDate.desc())\
+        .limit(5).all()
+        
+    return render_template("dashboard.html", 
+                           username=session["username"], 
+                           total_files=total_files, 
+                           files=recent_files)
+
+@app.route("/api/upload", methods=["POST"])
+def upload_secure():
+    if "user_id" not in session:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    try:
+        file_obj = request.files.get('file')
+        file_name = request.form.get('fileName')
+        file_size = request.form.get('fileSize')
+        file_type = request.form.get('fileType')
+        salt = request.form.get('salt')
+        iv = request.form.get('iv')
+
+        if not file_obj:
+            return jsonify({"success": False, "message": "No file provided"}), 400
+
+        user_id = session["user_id"]
+        random_name = f"{uuid.uuid4()}.enc"
+        storage_path = f"vault/user_{user_id}/{random_name}"
+
+        file_bytes = file_obj.read()
+        res = supabase.storage.from_("secure_vault").upload(
+            path=storage_path,
+            file=file_bytes,
+            file_options={"content-type": "application/octet-stream"}
+        )
+
+        new_file = UserFiles(
+            UserID=user_id,
+            FileName=file_name,
+            FileSizeBytes=file_size,
+            FileType=file_type,
+            StoragePath=storage_path,
+            StorageProvider='supabase',
+            EncryptionSalt=salt,
+            EncryptionIV=iv
+        )
+
+        db.session.add(new_file)
+        db.session.commit()
+
+        from datetime import datetime
+        return jsonify({
+            "success": True, 
+            "message": "File Vaulted Successfully!",
+            "new_file": {
+                "name": file_name,
+                "size": file_size,
+                "date": datetime.now().strftime('%Y-%m-%d'),
+                "type": "AES-256"
+            }
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Upload Error: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route("/files")
+def files_page():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    
+    user_id = session["user_id"]
+    
+    all_files = UserFiles.query.filter_by(UserID=user_id)\
+        .order_by(UserFiles.UploadDate.desc())\
+        .all()
+    
+    return render_template("files.html", files=all_files, username=session["username"])
+
+@app.route("/api/download/<int:file_id>")
+def download_file(file_id):
+    if "user_id" not in session:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    file_record = UserFiles.query.filter_by(FileID=file_id, UserID=session["user_id"]).first()
+    
+    if not file_record:
+        return jsonify({"success": False, "message": "File not found"}), 404
+
+    try:
+        res = supabase.storage.from_("secure_vault").download(file_record.StoragePath)
+        encrypted_b64 = base64.b64encode(res).decode('utf-8')
+
+        return jsonify({
+            "success": True,
+            "fileName": file_record.FileName,
+            "fileType": file_record.FileType,
+            "encryptedData": encrypted_b64,
+            "salt": file_record.EncryptionSalt,
+            "iv": file_record.EncryptionIV
+        })
+
+    except Exception as e:
+        print(f"Download Error: {e}")
+        return jsonify({"success": False, "message": "Failed to retrieve file"}), 500
+    
+@app.route("/settings")
+def settings_page():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+    
+    return render_template("settings.html", username=session["username"])
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+# --- NEW: DELETE ACCOUNT LOGIC ---
+@app.route("/api/delete_account", methods=["DELETE"])
+def delete_account():
+    if "user_id" not in session:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    user_id = session["user_id"]
+
+    try:
+        # 1. Get all file paths for this user
+        files = UserFiles.query.filter_by(UserID=user_id).all()
+        paths_to_delete = [f.StoragePath for f in files]
+
+        # 2. Delete from Supabase (if any files exist)
+        if paths_to_delete:
+            supabase.storage.from_("secure_vault").remove(paths_to_delete)
+
+        # 3. Delete from SQL Tables
+        UserFiles.query.filter_by(UserID=user_id).delete()
+        Users.query.filter_by(UserID=user_id).delete()
+        
+        db.session.commit()
+        session.clear()
+
+        return jsonify({"success": True, "message": "Account deleted successfully"})
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Delete Error: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.after_request
+def add_header(response):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 if __name__ == "__main__":
     app.run(debug=True)
