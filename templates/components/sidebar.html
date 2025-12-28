@@ -1,0 +1,53 @@
+<aside id="sidebar" class="sidebar w-64 h-screen flex flex-col fixed md:relative shrink-0 z-50 transition-transform duration-300">
+    <div class="p-6 flex items-center gap-3 border-b border-[var(--border-color)]">
+        <div class="w-8 h-8 rounded bg-cyan-500/20 flex items-center justify-center text-cyan-500"><i class="fa-solid fa-shield-halved"></i></div>
+        <h1 class="text-xl font-bold">SecureVault</h1>
+    </div>
+    
+    <nav class="flex-1 p-4 space-y-2">
+        <a href="{{ url_for('dashboard') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors {{ 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/20' if request.endpoint == 'dashboard' else 'text-slate-500 hover:bg-slate-800' }}">
+            <i class="fa-solid fa-house"></i> <span class="font-medium">Home</span>
+        </a>
+        <a href="{{ url_for('files_page') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors {{ 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/20' if request.endpoint == 'files_page' else 'text-slate-500 hover:bg-slate-800' }}">
+            <i class="fa-solid fa-folder-open"></i> <span class="font-medium">My Files</span>
+        </a>
+        <a href="{{ url_for('settings_page') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors {{ 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/20' if request.endpoint == 'settings_page' else 'text-slate-500 hover:bg-slate-800' }}">
+            <i class="fa-solid fa-gear"></i> <span class="font-medium">Settings</span>
+        </a>
+    </nav>
+
+    <div class="p-4 border-t border-[var(--border-color)] relative">
+        
+        <div id="userMenu" class="absolute bottom-full left-4 right-4 mb-2 glass-card rounded-xl p-2 hidden shadow-2xl border border-[var(--border-color)] transform origin-bottom transition-all">
+            <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-3 py-2.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors w-full">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span class="font-medium text-sm">Logout</span>
+            </a>
+        </div>
+
+        <button onclick="toggleUserMenu()" class="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-slate-800/50 transition-colors text-left">
+            <img src="https://ui-avatars.com/api/?name={{ username }}&background=0f172a&color=fff" class="w-9 h-9 rounded-full border border-slate-600">
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium truncate">{{ username }}</p>
+                <p class="text-xs text-muted truncate">View Options</p>
+            </div>
+            <i class="fa-solid fa-chevron-up text-xs text-muted"></i>
+        </button>
+    </div>
+</aside>
+
+<script>
+    function toggleUserMenu() {
+        const menu = document.getElementById('userMenu');
+        menu.classList.toggle('hidden');
+    }
+
+    // Close menu if clicking outside
+    document.addEventListener('click', function(event) {
+        const menu = document.getElementById('userMenu');
+        const btn = document.querySelector('button[onclick="toggleUserMenu()"]');
+        if (!menu.contains(event.target) && !btn.contains(event.target)) {
+            menu.classList.add('hidden');
+        }
+    });
+</script>
