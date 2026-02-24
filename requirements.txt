@@ -6,3 +6,4 @@ supabase
 pyodbc
 email_validator
 authlib
+gunicorn
