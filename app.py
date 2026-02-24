@@ -29,7 +29,7 @@ params = urllib.parse.quote_plus(
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = f"mssql+pyodbc:///?odbc_connect={params}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.secret_key = os.getenv("APP_SECRET_KEY")
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY")
 
 csrf = CSRFProtect(app)
 db = SQLAlchemy(app)
