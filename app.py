@@ -16,18 +16,19 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-params = urllib.parse.quote_plus(
-    f"Driver={{ODBC Driver 17 for SQL Server}};"
-    f"Server={os.getenv('DB_SERVER')};"
-    f"Database={os.getenv('DB_NAME')};"
-    f"Uid={os.getenv('DB_USER')};"
-    f"Pwd={os.getenv('DB_PASSWORD')};"
-    f"Encrypt=yes;"
-    f"TrustServerCertificate=no;"
-)
+SUPABASE_DB_USER = "postgres.iedfikmjagbpiwoxwllq"
+# Safely fetch AND URL-encode the password to handle special characters
+raw_password = os.getenv("SUPABASE_PASSWORD")
+if not raw_password:
+    raise ValueError("No SUPABASE_PASSWORD found! Please ensure it is set in your .env file.")
+SUPABASE_DB_PASSWORD = urllib.parse.quote_plus(raw_password)
+SUPABASE_DB_HOST = "aws-1-ap-southeast-2.pooler.supabase.com"
+SUPABASE_DB_PORT = "5432"
+SUPABASE_DB_NAME = "postgres"
+
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = f"mssql+pyodbc:///?odbc_connect={params}"
+app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql://{SUPABASE_DB_USER}:{SUPABASE_DB_PASSWORD}@{SUPABASE_DB_HOST}:{SUPABASE_DB_PORT}/{SUPABASE_DB_NAME}?sslmode=require"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY")
 
@@ -46,26 +47,29 @@ google = oauth.register(
 
 # --- DATABASE MODELS ---
 class Users(db.Model):
-    __tablename__ = "Users"
-    UserID = db.Column(Integer, primary_key=True, autoincrement=True)
-    Username = db.Column(String(50), unique=True, nullable=False)
-    Email = db.Column(String(100), unique=True, nullable=False)
-    PasswordHash = db.Column(String(255), nullable=False)
-    ProfileImage = db.Column(String(255), nullable=True)
-    CreatedAt = db.Column(DateTime, server_default=func.getdate())
+    __tablename__ = "users" 
+    
+    # Python Attribute = db.Column('postgres_column_name', Type, ...)
+    UserID = db.Column('user_id', BigInteger, primary_key=True, autoincrement=True)
+    Username = db.Column('username', String(50), unique=True, nullable=False)
+    Email = db.Column('email', String(100), unique=True, nullable=False)
+    PasswordHash = db.Column('password_hash', String(255), nullable=False)
+    ProfileImage = db.Column('profile_image', String(255), nullable=True)
+    CreatedAt = db.Column('created_at', DateTime, server_default=func.now()) # Changed to func.now()
 
 class UserFiles(db.Model):
-    __tablename__ = "UserFiles"
-    FileID = db.Column(Integer, primary_key=True, autoincrement=True)
-    UserID = db.Column(Integer, ForeignKey("Users.UserID"), nullable=False)
-    FileName = db.Column(String(255), nullable=False)
-    FileSizeBytes = db.Column(BigInteger, nullable=False)
-    FileType = db.Column(String(50))
-    StoragePath = db.Column(String(500), nullable=False)
-    StorageProvider = db.Column(String(50), server_default='supabase')
-    EncryptionSalt = db.Column(String(255), nullable=False)
-    EncryptionIV = db.Column(String(255), nullable=False)
-    UploadDate = db.Column(DateTime, server_default=func.getdate())
+    __tablename__ = "user_files" 
+    
+    FileID = db.Column('file_id', BigInteger, primary_key=True, autoincrement=True)
+    UserID = db.Column('user_id', BigInteger, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    FileName = db.Column('file_name', String(255), nullable=False)
+    FileSizeBytes = db.Column('file_size_bytes', BigInteger, nullable=False)
+    FileType = db.Column('file_type', String(50))
+    StoragePath = db.Column('storage_path', String(500), nullable=False)
+    StorageProvider = db.Column('storage_provider', String(50), server_default='supabase')
+    EncryptionSalt = db.Column('encryption_salt', String(255), nullable=False)
+    EncryptionIV = db.Column('encryption_iv', String(255), nullable=False)
+    UploadDate = db.Column('upload_date', DateTime, server_default=func.now()) # Changed to func.now()
 
 # --- ROUTES ---
 
