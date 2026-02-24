@@ -8,7 +8,11 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
+<<<<<<< Updated upstream
 set VIRTUAL_ENV=D:\zero-knowledge kyc\Zero-knowledge-kyc\venv
+=======
+set VIRTUAL_ENV=C:\Users\MD Afrid Basha\My Drive\Important data\Projects\Zero-knowledge-kyc\venv
+>>>>>>> Stashed changes
 
 if not defined PROMPT set PROMPT=$P$G
 

@@ -305,6 +305,30 @@ def download_file(file_id):
         print(f"Download Error: {e}")
         return jsonify({"success": False, "message": "Failed to retrieve file"}), 500
 
+@app.route("/api/delete_file/<int:file_id>", methods=["DELETE"])
+def delete_file(file_id):
+    if "user_id" not in session:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    # Find the file and ensure it belongs to the logged-in user
+    file_record = UserFiles.query.filter_by(FileID=file_id, UserID=session["user_id"]).first()
+    if not file_record:
+        return jsonify({"success": False, "message": "File not found"}), 404
+
+    try:
+        # 1. Remove from Supabase Storage
+        supabase.storage.from_("secure_vault").remove([file_record.StoragePath])
+        
+        # 2. Remove from SQL Database
+        db.session.delete(file_record)
+        db.session.commit()
+        
+        return jsonify({"success": True, "message": "File deleted successfully"})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Delete Error: {e}")
+        return jsonify({"success": False, "message": "Failed to delete file"}), 500
+    
 @app.route("/settings")
 def settings_page():
     if "user_id" not in session:

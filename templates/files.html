@@ -52,6 +52,21 @@
         </div>
     </div>
 
+    <div id="deleteModal" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-bg p-4">
+        <div class="glass-card w-full max-w-sm rounded-2xl p-6 relative">
+            <button onclick="closeDeleteModal()" class="absolute top-4 right-4 text-slate-500 hover:text-red-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <div class="text-center mb-6">
+                <div class="w-12 h-12 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-trash"></i></div>
+                <h3 class="text-lg font-semibold">Delete File</h3>
+                <p class="text-xs text-muted">Enter Secret Key to delete <br><span id="deleteModalFileName" class="font-bold text-red-500"></span></p>
+            </div>
+            <input type="hidden" id="deleteModalFileId">
+            <input type="password" id="deleteSecretKey" placeholder="Enter PIN/Key" class="custom-input w-full rounded-lg px-4 py-3 mb-4">
+            <button id="deleteBtn" onclick="executeFileDelete()" class="w-full bg-red-600 hover:bg-red-500 text-white font-semibold py-2.5 rounded-lg transition-colors">Confirm Deletion</button>
+            <p id="deleteStatusMsg" class="text-xs text-center mt-3 text-red-400 min-h-[1.5em]"></p>
+        </div>
+    </div>
+
     {% include 'components/sidebar.html' %}
 
     <main class="flex-1 flex flex-col h-screen overflow-y-auto">
@@ -67,7 +82,14 @@
                     <div onclick="openDecryptModal('{{ file.FileName }}', '{{ file.FileID }}')" class="file-card glass-card p-4 rounded-xl cursor-pointer border border-transparent">
                         <div class="flex justify-between mb-3">
                             <div class="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center"><i class="fa-regular fa-file"></i></div>
-                            <i class="fa-solid fa-lock text-emerald-500 text-xs"></i>
+                            
+                            <div class="flex items-center gap-3">
+                                <i class="fa-solid fa-lock text-emerald-500 text-xs"></i>
+                                <button onclick="openDeleteModal('{{ file.FileName }}', '{{ file.FileID }}', event)" class="text-slate-400 hover:text-red-500 transition-colors z-10 p-1">
+                                    <i class="fa-solid fa-trash text-sm"></i>
+                                </button>
+                            </div>
+
                         </div>
                         <h4 class="text-sm font-medium truncate mb-1">{{ file.FileName }}</h4>
                         <p class="text-xs text-muted">{{ (file.FileSizeBytes / 1024)|round(1) }} KB • {{ file.UploadDate.strftime('%Y-%m-%d') }}</p>
@@ -85,6 +107,65 @@
         function openDecryptModal(name, id) { document.getElementById('modalFileName').innerText = name; document.getElementById('modalFileId').value = id; document.getElementById('decryptKey').value = ""; document.getElementById('statusMsg').innerText = ""; document.getElementById('decryptModal').classList.remove('hidden'); }
         function closeModal() { document.getElementById('decryptModal').classList.add('hidden'); }
 
+        // Delete Modal Functions
+        function openDeleteModal(name, id, event) { 
+            event.stopPropagation(); 
+            document.getElementById('deleteModalFileName').innerText = name; 
+            document.getElementById('deleteModalFileId').value = id; 
+            document.getElementById('deleteSecretKey').value = ""; 
+            document.getElementById('deleteStatusMsg').innerText = ""; 
+            document.getElementById('deleteModal').classList.remove('hidden'); 
+        }
+        function closeDeleteModal() { document.getElementById('deleteModal').classList.add('hidden'); }
+
+        async function executeFileDelete() {
+            const btn = document.getElementById('deleteBtn'); 
+            const status = document.getElementById('deleteStatusMsg'); 
+            const fileId = document.getElementById('deleteModalFileId').value; 
+            const secretKey = document.getElementById('deleteSecretKey').value;
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            if(!secretKey) { status.innerText = "Please enter the Secret Key."; return; }
+            
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Verifying Key...'; 
+            btn.disabled = true; 
+            status.innerText = "";
+
+            try {
+                // Step 1: Fetch the encrypted file to test the key
+                const downloadRes = await fetch(`/api/download/${fileId}`);
+                const data = await downloadRes.json();
+                
+                if (!data.success) throw new Error("Failed to retrieve file for verification.");
+
+                // Step 2: Attempt to decrypt. If the key is wrong, this will throw an error and jump to catch()
+                btn.innerHTML = '<i class="fa-solid fa-unlock"></i> Testing Key...';
+                const key = await deriveDecryptionKey(secretKey, data.salt);
+                await decryptContent(data.encryptedData, key, data.iv);
+
+                // Step 3: If decryption succeeds without errors, proceed to delete from backend
+                btn.innerHTML = '<i class="fa-solid fa-trash"></i> Deleting...';
+                const deleteRes = await fetch(`/api/delete_file/${fileId}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRFToken': csrfToken }
+                });
+                
+                const deleteData = await deleteRes.json();
+                
+                if (!deleteData.success) throw new Error(deleteData.message);
+                
+                closeDeleteModal();
+                alert("File Deleted Successfully!");
+                window.location.reload(); 
+            } catch (err) { 
+                console.error(err); 
+                status.innerText = "Incorrect Secret Key or Deletion Failed."; 
+                btn.innerHTML = 'Confirm Deletion'; 
+                btn.disabled = false; 
+            }
+        }
+
+        // Existing Encryption Functions
         async function getBaseKey(pin) { const encoder = new TextEncoder(); return window.crypto.subtle.importKey("raw", encoder.encode(pin), { name: "PBKDF2" }, false, ["deriveKey"]); }
         async function deriveDecryptionKey(pin, saltHex) { const saltBytes = new Uint8Array(saltHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16))); const baseKey = await getBaseKey(pin); return window.crypto.subtle.deriveKey({ name: "PBKDF2", salt: saltBytes, iterations: 600000, hash: "SHA-256" }, baseKey, { name: "AES-GCM", length: 256 }, false, ["decrypt"]); }
         async function decryptContent(encryptedB64, key, ivHex) {
