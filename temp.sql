@@ -1,0 +1,3 @@
+SELECT * FROM Users
+
+SELECT * FROM UserFiles
